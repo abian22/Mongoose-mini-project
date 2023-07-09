@@ -1,23 +1,121 @@
-const User = require("../models/user.model")
+const bcrypt = require("bcrypt");
+const User = require("../models/user.model");
 
 async function getAllUsers(req, res) {
-    try {
-        const users = await User.find()
-        console.log(users)
-        if (users) {
-            return res.status(200).json(users)
-        } else {
-            return res.status(404).send("No users found")
-        }
-    } catch (error) {
-        res.status(500).send(error.message)
+  try {
+    const users = await User.find();
+    console.log(users);
+    if (!users) {
+      return res.status(404).send("No users found");
+    } else {
+      return res.status(200).json(users);
     }
+  } catch (error) {
+    res.status(500).send(error.message);
+  }
 }
 
-async function postUser(req, res) {
-    try {
-        const user = userSchema(req.body)
+async function getMe(req, res) {
+  try {
+    const user = await User.findById(res.locals.user.id);
+    if (!user) {
+      return res.statsu(404).send("No user found");
     }
+    return res.status(200).json(user);
+  } catch (error) {}
 }
 
-module.exports = getAllUsers
+async function getOneUser(req, res) {
+  try {
+    const user = await User.findById({ _id: req.params.id });
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    return res.status(200).json({ user: user });
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ error: "Error finding user: " + error.message });
+  }
+}
+
+async function createUser(req, res) {
+  try {
+    const user = await User.create(req.body);
+    if (!user) {
+      return res.status(500).send("Failed to create user");
+    }
+    res.status(201).json({ message: "User created", user: user });
+  } catch (error) {
+    res.status(500).send("Failed to create user");
+  }
+}
+
+async function updateUser(req, res) {
+  try {
+    if (req.body.password) {
+      req.body.password = bcrypt.hashSync(req.body.password, 10);
+    }
+
+    const user = await User.findByIdAndUpdate(req.params.id, req.body);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    return res.status(200).json({ message: "User updated" });
+  } catch (error) {
+    return res.status(500).json({ error: "User update failed" });
+  }
+}
+
+async function deleteUser(req, res) {
+  try {
+    const user = await User.deleteOne({ _id: req.params.id });
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    return res.status(200).json({ message: "User deleted" });
+  } catch (error) {
+    return res.status(500).json({ error: "User delete failed" });
+  }
+}
+
+async function deleteMe(req, res) {
+  try {
+    const user = User.deleteOne({ _id: res.locals.user.id });
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    return res.status(200).json({ message: "User deleted" });
+  } catch (error) {
+    return res.status(500).json({ error: "User delete failed" + error.message });
+  }
+}
+
+async function updateMe(req, res) {
+  try {
+    if (req.body.password) {
+      req.body.password = bcrypt.hashSync(req.body.password, 10);
+    }
+
+    const user = await User.findByIdAndUpdate(res.locals.user.id, req.body);
+
+    if (user.n === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    return res.status(200).json({ message: "User updated" });
+  } catch (error) {
+    return res.status(500).send("Failed to update user");
+  }
+}
+
+module.exports = {
+  getAllUsers,
+  createUser,
+  updateUser,
+  getOneUser,
+  getMe,
+  deleteUser,
+  deleteMe,
+  updateMe,
+};
